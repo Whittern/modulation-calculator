@@ -5,23 +5,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-cache: 'pip'
-      - name: Install Flet
+          python-version: '3.10'
+
+      - name: Install Tools
         run: pip install flet cython
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      - name: Build APK
+
+      - name: Build
         run: |
-          mkdir src
+          mkdir -p src
           cp main.py src/main.py
-          flet build apk src
-      - name: Upload APK
+          yes | flet build apk src
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: music-app-apk
