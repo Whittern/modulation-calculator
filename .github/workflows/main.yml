@@ -1,0 +1,28 @@
+name: Build Flet APK
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-cache: 'pip'
+      - name: Install Flet
+        run: pip install flet cython
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Build APK
+        run: |
+          mkdir src
+          cp main.py src/main.py
+          flet build apk src
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-app-apk
+          path: build/apk/app-release.apk
