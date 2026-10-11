@@ -1,8 +1,8 @@
 from collections import deque
-import streamlit as st
+import flet as ft
 
 # =====================================================================
-# --- БАЗА ДАННЫХ И МУЗЫКАЛЬНАЯ ЛОГИКА (БЕЗ ИЗМЕНЕНИЙ) ---
+# --- БАЗА ДАННЫХ И МУЗЫКАЛЬНАЯ ЛОГИКА (МОСКОВСКАЯ ШКОЛА ГАРМОНИИ) ---
 # =====================================================================
 
 TONALITIES = {
@@ -21,10 +21,10 @@ FIFTHS_ORDER = ['Ces', 'Ges', 'Des', 'As', 'Es', 'B', 'F', 'C', 'G', 'D', 'A', '
 
 
 def get_base_tonic(tonality):
-    raw_tonic = tonality.split('-')[0]
-    if raw_tonic.lower() == 'b': return 'B'
-    if raw_tonic.lower() == 'h': return 'H'
-    return raw_tonic[0].upper() + raw_tonic[1:] if len(raw_tonic) > 1 else raw_tonic.upper()
+    raw_tonic = tonality.split('-')
+    if raw_tonic[0].lower() == 'b': return 'B'
+    if raw_tonic[0].lower() == 'h': return 'H'
+    return raw_tonic[0].upper() + raw_tonic[0][1:] if len(raw_tonic[0]) > 1 else raw_tonic[0].upper()
 
 
 def get_fifth_index(tonality):
@@ -138,31 +138,69 @@ def find_modulation_plans(start, end):
 
 
 # =====================================================================
-# --- ЛЕГКИЙ ИНТЕРФЕЙС STREAMLIT ДЛЯ СМАРТФОНОВ ---
+# --- МОБИЛЬНЫЙ ИНТЕРФЕЙС FLET ДЛЯ ANDROID ---
 # =====================================================================
 
-st.set_page_config(page_title="Модуляции", page_icon="🎵")
-st.title("🎼 План тональных модуляций")
+def build_gui(page: ft.Page):
+    page.title = "Калькулятор модуляций"
+    page.scroll = ft.ScrollMode.AUTO
+    page.theme_mode = ft.ThemeMode.SYSTEM
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-tonality_list = sorted(list(TONALITIES.keys()))
+    tonality_list = sorted(list(TONALITIES.keys()))
+    dropdown_options = [ft.dropdown.Option(t) for t in tonality_list]
 
-# Красивые мобильные выпадающие списки
-start_key = st.selectbox("Начальная тональность:", tonality_list, index=tonality_list.index("C-dur"))
-end_key = st.selectbox("Конечная тональность:", tonality_list, index=tonality_list.index("a-moll"))
+    title = ft.Text("Планы тональных модуляций", size=22, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER)
+    combo_start = ft.Dropdown(options=dropdown_options, value="C-dur", width=300, label="Начальная тональность")
+    combo_end = ft.Dropdown(options=dropdown_options, value="a-moll", width=300, label="Конечная тональность")
 
-if st.button("Рассчитать планы", type="primary", use_container_width=True):
-    plans_dict = find_modulation_plans(start_key, end_key)
+    # Поле вывода результатов, оптимизированное под экран телефона
+    text_result = ft.TextField(label="Результаты расчета", multiline=True, min_lines=6, max_lines=12, width=320,
+                               read_only=True)
 
-    if not plans_dict or isinstance(plans_dict, str):
-        st.error(plans_dict if isinstance(plans_dict, str) else "План перехода не найден.")
-    else:
-        global_degree = get_pair_degree(start_key, end_key)
+    def calculate_click(e):
+        start = combo_start.value
+        end = combo_end.value
+        text_result.value = ""
+
+        plans_dict = find_modulation_plans(start, end)
+
+        if not plans_dict or isinstance(plans_dict, str):
+            text_result.value = f"⚠️ {plans_dict if isinstance(plans_dict, str) else 'План перехода не найден.'}"
+            page.update()
+            return
+
+        global_degree = get_pair_degree(start, end)
         inter_count = list(plans_dict.keys())[0]
         actual_plans = plans_dict[inter_count]
 
-        st.success(f"📊 Степень связи: {global_degree}-я степень родства")
-        st.info(f"⏱️ Промежуточных тональностей: {inter_count} | Вариантов: {len(actual_plans)}")
+        output = f"📊 Степень связи: {global_degree}-я степень родства\n"
+        output += f"⏱️ Промежуточных тональностей: {inter_count}\n"
+        output += f"✨ Вариантов: {len(actual_plans)}\n"
+        output += "-" * 35 + "\n\n"
 
-        # Вывод результатов красивыми карточками
         for idx, plan in enumerate(actual_plans, 1):
-            st.code(f"Вариант №{idx}: " + " ➔ ".join(plan), language="music")
+            output += f"План №{idx}: " + " -> ".join(plan) + "\n\n"
+
+        text_result.value = output
+        page.update()
+
+    btn_calc = ft.ElevatedButton("Рассчитать планы", on_click=calculate_click, width=200)
+
+    page.add(
+        ft.Column(
+            controls=[
+                title,
+                ft.Divider(),
+                combo_start,
+                combo_end,
+                ft.Container(content=btn_calc, margin=ft.margin.only(top=10, bottom=10)),
+                text_result
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+    )
+
+
+if __name__ == "__main__":
+    ft.app(target=build_gui)
